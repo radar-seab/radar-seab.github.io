@@ -8,7 +8,8 @@ Clipping de notícias para a assessoria de imprensa da Secretaria da Agricultura
 
 - **Período:** Hoje, Ontem, Esta semana, Semana passada (seg a sex), Últimos 7 dias, Este mês, Mês passado, ou datas livres em *De / até*.
 - **Termos:** ligue e desligue cada termo monitorado.
-- **Buscar:** filtra por palavra no título ou no nome do veículo.
+- **Mídia:** Portal, Jornal, TV, Rádio, Vídeo, Oficial.
+- **Buscar:** filtra por palavra no título, resumo ou nome do veículo.
 - **Copiar clipping:** copia a lista pronta para colar no WhatsApp ou e-mail.
 - **Baixar planilha (CSV):** abre direto no Excel.
 - O endereço da página guarda os filtros; dá para mandar o link de um recorte para alguém.

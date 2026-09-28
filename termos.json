@@ -1,10 +1,10 @@
 [
-  {"termo": "Seab", "busca": "\"Seab\" (Paraná OR paranaense)"},
-  {"termo": "Secretaria da Agricultura e do Abastecimento", "busca": "\"Secretaria da Agricultura e do Abastecimento\" Paraná"},
-  {"termo": "Secretaria de Estado da Agricultura e do Abastecimento", "busca": "\"Secretaria de Estado da Agricultura e do Abastecimento\""},
-  {"termo": "IDR-Paraná", "busca": "\"IDR-Paraná\" OR \"IDR Paraná\""},
-  {"termo": "IDR", "busca": "\"IDR\" (Paraná OR paranaense)"},
-  {"termo": "Ceasa", "busca": "\"Ceasa\" (Paraná OR Curitiba OR Londrina OR Maringá OR Cascavel OR \"Foz do Iguaçu\")"},
-  {"termo": "Adapar", "busca": "\"Adapar\" OR \"Agência de Defesa Agropecuária do Paraná\""},
-  {"termo": "Deral", "busca": "\"Deral\""}
+  {"termo": "Seab", "busca": "\"Seab\" (Paraná OR paranaense)", "regex": "\\bseab\\b"},
+  {"termo": "Secretaria da Agricultura e do Abastecimento", "busca": "\"Secretaria da Agricultura e do Abastecimento\" Paraná", "regex": "secretaria (estadual )?da agricultura e (do )?abastecimento", "contexto": "pr"},
+  {"termo": "Secretaria de Estado da Agricultura e do Abastecimento", "busca": "\"Secretaria de Estado da Agricultura e do Abastecimento\"", "regex": "secretaria de estado da agricultura e (do )?abastecimento", "contexto": "pr"},
+  {"termo": "IDR-Paraná", "busca": "\"IDR-Paraná\" OR \"IDR Paraná\"", "regex": "\\bidr[- ]?(parana|pr)\\b"},
+  {"termo": "IDR", "busca": "\"IDR\" (Paraná OR paranaense)", "regex": "\\bIDR\\b", "maiusculas": true, "contexto": "pr"},
+  {"termo": "Ceasa", "busca": "\"Ceasa\" (Paraná OR Curitiba OR Londrina OR Maringá OR Cascavel OR \"Foz do Iguaçu\") -Ceará -Maracanaú -Fortaleza -Joinville -Goiás -Anápolis -Campinas -Manaus", "regex": "\\bceasa", "contexto": "estrito", "youtube": "Ceasa Paraná"},
+  {"termo": "Adapar", "busca": "\"Adapar\" OR \"Agência de Defesa Agropecuária do Paraná\"", "regex": "\\badapar\\b|agencia de defesa agropecuaria do parana"},
+  {"termo": "Deral", "busca": "\"Deral\"", "regex": "\\bderal\\b", "contexto": "pr"}
 ]

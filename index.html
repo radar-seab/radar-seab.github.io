@@ -39,6 +39,8 @@ li a{color:var(--ink);font-weight:600;text-decoration:none}
 li a:hover{color:var(--acc);text-decoration:underline}
 .meta{font-size:13px;color:var(--mute);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
 .fonte{color:var(--acc);font-weight:600}
+.resumo{font-size:13px;color:var(--mute);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.midia{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--ink)}
 .tag{font-size:11px;background:var(--acc2);color:var(--acc);border-radius:4px;padding:1px 6px}
 .vazio{padding:30px;text-align:center;color:var(--mute)}
 footer{color:var(--mute);font-size:12px;padding:24px 16px;text-align:center}
@@ -52,12 +54,13 @@ footer{color:var(--mute);font-size:12px;padding:24px 16px;text-align:center}
     <div class="linha" id="periodos"><span class="rot">Período</span></div>
     <div class="linha"><span class="rot">De</span><input type="date" id="de" aria-label="Data inicial"> <span>até</span> <input type="date" id="ate" aria-label="Data final"></div>
     <div class="linha" id="termos"><span class="rot">Termos</span></div>
-    <div class="linha"><span class="rot">Buscar</span><input type="search" id="q" placeholder="Palavra no título ou veículo (ex.: trigo, Folha de Londrina)"></div>
+    <div class="linha" id="midias"><span class="rot">Mídia</span></div>
+    <div class="linha"><span class="rot">Buscar</span><input type="search" id="q" placeholder="Palavra no título, resumo ou veículo (ex.: trigo, Folha de Londrina)"></div>
   </section>
   <div id="resumo"></div>
   <div id="lista"><p class="vazio">Carregando…</p></div>
 </main>
-<footer>Fonte: Google Notícias. Coleta automática a cada 2 horas. <span id="atualizado"></span></footer>
+<footer>Fontes: Google Notícias, Bing Notícias, YouTube e RSS de 40 veículos do Paraná e do agro. Coleta automática a cada 2 horas. <span id="atualizado"></span></footer>
 <div id="toast" role="status"></div>
 <script>
 const TZ = "America/Sao_Paulo";
@@ -87,8 +90,9 @@ function periodos() {
   ];
 }
 
+const MIDIAS = ["Portal", "Jornal", "TV", "Rádio", "Vídeo", "Oficial"];
 let DADOS = { noticias: [], termos: [] };
-const estado = { de: null, ate: null, termos: new Set(), q: "" };
+const estado = { de: null, ate: null, termos: new Set(), midias: new Set(MIDIAS), q: "" };
 
 function lerURL() {
   const p = new URLSearchParams(location.hash.slice(1));
@@ -98,11 +102,14 @@ function lerURL() {
   estado.q = p.get("q") || "";
   const t = p.get("termos");
   estado.termos = new Set(t ? t.split("|") : DADOS.termos);
+  const m = p.get("midias");
+  estado.midias = new Set(m ? m.split("|") : MIDIAS);
 }
 function gravarURL() {
   const p = new URLSearchParams({ de: estado.de, ate: estado.ate });
   if (estado.q) p.set("q", estado.q);
   if (estado.termos.size !== DADOS.termos.length) p.set("termos", [...estado.termos].join("|"));
+  if (estado.midias.size !== MIDIAS.length) p.set("midias", [...estado.midias].join("|"));
   history.replaceState(null, "", "#" + p);
 }
 
@@ -112,7 +119,8 @@ function filtradas() {
     const d = diaLocal(n.data);
     return d >= estado.de && d <= estado.ate
       && n.termos.some(t => estado.termos.has(t))
-      && (!q || semAcento(n.titulo + " " + n.fonte).includes(q));
+      && estado.midias.has(n.midia || "Portal")
+      && (!q || semAcento(`${n.titulo} ${n.resumo || ""} ${n.fonte}`).includes(q));
   });
 }
 
@@ -128,18 +136,27 @@ function montarControles() {
   for (const [nome, de, ate] of periodos()) {
     pp.append(el("button", { type: "button", textContent: nome, onclick: () => { estado.de = de; estado.ate = ate; render(); } }));
   }
-  const tt = $("#termos");
-  tt.append(el("button", { type: "button", className: "chip", textContent: "Todos", onclick: () => {
-    estado.termos = estado.termos.size === DADOS.termos.length ? new Set() : new Set(DADOS.termos); render();
-  } }));
-  for (const t of DADOS.termos) {
-    tt.append(el("button", { type: "button", className: "chip", textContent: t, onclick: () => {
-      estado.termos.has(t) ? estado.termos.delete(t) : estado.termos.add(t); render();
-    } }));
-  }
+  chips($("#termos"), "termos", DADOS.termos);
+  chips($("#midias"), "midias", MIDIAS);
   $("#de").onchange = e => { estado.de = e.target.value; render(); };
   $("#ate").onchange = e => { estado.ate = e.target.value; render(); };
   $("#q").oninput = e => { estado.q = e.target.value; render(); };
+}
+
+function chips(box, chave, todos) {
+  box.append(el("button", { type: "button", className: "chip", textContent: "Todos", onclick: () => {
+    estado[chave] = estado[chave].size === todos.length ? new Set() : new Set(todos); render();
+  } }));
+  for (const t of todos) {
+    box.append(el("button", { type: "button", className: "chip", textContent: t, onclick: () => {
+      estado[chave].has(t) ? estado[chave].delete(t) : estado[chave].add(t); render();
+    } }));
+  }
+}
+function pintarChips(box, chave, todos) {
+  const cs = box.querySelectorAll(".chip");
+  cs[0].classList.toggle("on", estado[chave].size === todos.length);
+  todos.forEach((t, i) => cs[i + 1].classList.toggle("on", estado[chave].has(t)));
 }
 
 function render() {
@@ -148,9 +165,8 @@ function render() {
   $("#de").value = estado.de; $("#ate").value = estado.ate; if ($("#q").value !== estado.q) $("#q").value = estado.q;
   for (const [i, [, de, ate]] of periodos().entries())
     $("#periodos").children[i + 1].setAttribute("aria-pressed", de === estado.de && ate === estado.ate);
-  const chips = $("#termos").querySelectorAll(".chip");
-  chips[0].classList.toggle("on", estado.termos.size === DADOS.termos.length);
-  DADOS.termos.forEach((t, i) => chips[i + 1].classList.toggle("on", estado.termos.has(t)));
+  pintarChips($("#termos"), "termos", DADOS.termos);
+  pintarChips($("#midias"), "midias", MIDIAS);
 
   const lista = filtradas();
   const veiculos = new Set(lista.map(n => n.fonte)).size;
@@ -169,8 +185,10 @@ function render() {
     el("h2", { textContent: `${fmtDia(dia)} · ${ns.length}` }),
     el("ol", {}, ...ns.map(n => el("li", {},
       el("a", { href: n.link, target: "_blank", rel: "noopener", textContent: n.titulo }),
+      ...(n.resumo && n.resumo !== n.titulo ? [el("span", { className: "resumo", textContent: n.resumo })] : []),
       el("span", { className: "meta" },
         el("span", { className: "fonte", textContent: n.fonte }),
+        el("span", { className: "midia", textContent: n.midia || "Portal" }),
         el("span", { textContent: fmtHora(n.data) }),
         ...n.termos.map(t => el("span", { className: "tag", textContent: t }))))))
   ]));
@@ -178,13 +196,14 @@ function render() {
 
 function copiar(lista, periodo) {
   const texto = [`RADAR SEAB · Clipping ${periodo}`, `${lista.length} notícias`, "",
-    ...lista.map(n => `• ${n.titulo}\n  ${n.fonte}, ${fmtCurto(diaLocal(n.data))}\n  ${n.link}`)].join("\n");
+    ...lista.map(n => `• ${n.titulo}\n  ${n.fonte} (${n.midia || "Portal"}), ${fmtCurto(diaLocal(n.data))}\n  ${n.link}`)].join("\n");
   navigator.clipboard.writeText(texto).then(() => aviso("Clipping copiado"), () => aviso("Não foi possível copiar"));
 }
 function baixarCSV(lista) {
   const esc = v => `"${String(v).replace(/"/g, '""')}"`;
-  const linhas = [["data", "hora", "veiculo", "titulo", "termos", "link"],
-    ...lista.map(n => [fmtCurto(diaLocal(n.data)), fmtHora(n.data), n.fonte, n.titulo, n.termos.join("; "), n.link])];
+  const linhas = [["data", "hora", "veiculo", "midia", "titulo", "resumo", "termos", "coletado_via", "link"],
+    ...lista.map(n => [fmtCurto(diaLocal(n.data)), fmtHora(n.data), n.fonte, n.midia || "Portal", n.titulo, n.resumo || "",
+      n.termos.join("; "), n.origem || "Google", n.link])];
   const blob = new Blob(["﻿" + linhas.map(l => l.map(esc).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" });
   const a = el("a", { href: URL.createObjectURL(blob), download: `radar-seab_${estado.de}_${estado.ate}.csv` });
   a.click(); URL.revokeObjectURL(a.href);

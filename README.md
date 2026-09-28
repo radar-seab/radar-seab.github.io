@@ -15,13 +15,28 @@ Clipping de notícias para a assessoria de imprensa da Secretaria da Agricultura
 
 ## Como funciona
 
-- `termos.json`: lista de termos e a busca feita para cada um. Para incluir um termo, adicione uma linha e faça commit.
-- `scripts/coletar.py`: consulta o Google Notícias (RSS) para cada termo e acumula em `data/noticias.json` (guarda 2 anos).
-- `.github/workflows/coletar.yml`: roda a coleta a cada 2 horas. Em *Actions > Coletar notícias > Run workflow* dá para rodar na hora ou fazer carga retroativa (campo `desde`).
+Fontes, todas coletadas a cada 2 horas pelo GitHub Actions:
 
-Termos genéricos (IDR, Ceasa, "Secretaria da Agricultura e do Abastecimento") são buscados junto com "Paraná" ou cidades com unidade da Ceasa-PR, para não trazer notícias de outros estados.
+1. **Google Notícias**: busca por termo (principal fonte, milhares de portais, jornais, TVs e rádios com site).
+2. **Bing Notícias**: busca por termo, pega o que o Google não indexa.
+3. **RSS de 40 feeds de veículos do Paraná e do agro** (`fontes.json`): jornais (Gazeta do Povo, Folha de Londrina, O Diário, Tribuna…), TVs (G1/RPC, Tarobá, Massa, Canal Rural), rádios (CBN Curitiba, Banda B) e portais regionais. Em 14 deles também é feita busca por termo no acervo do próprio site.
+4. **YouTube**: telejornais e vídeos do último mês que citam os termos no título ou na descrição.
+
+Arquivos:
+
+- `termos.json`: termos, busca usada no Google/Bing e regra de conferência no texto. Para incluir um termo, adicione uma linha.
+- `fontes.json`: feeds de veículos. Para incluir um veículo, adicione `nome`, `url` do RSS, `midia` e `pr`.
+- `scripts/coletar.py`: coleta, filtra e acumula em `data/noticias.json` (guarda 2 anos). `scripts/test_coletar.py` confere as regras.
+- `.github/workflows/coletar.yml`: agenda da coleta. Em *Actions > Coletar notícias > Run workflow* dá para rodar na hora ou fazer carga retroativa (campo `desde`).
+
+Regras de filtro:
+
+- **Ceasa**: só entra com prova de Paraná no título, resumo ou veículo (Ceasa-PR, Paraná, cidades com unidade, veículo paranaense) e sem menção a outro estado. Ceasas de outros estados ficam de fora.
+- **IDR, Deral e "Secretaria da Agricultura e do Abastecimento"**: buscados junto com Paraná; nos feeds e no Bing, precisam de contexto paranaense.
+- Cada notícia recebe um tipo de mídia (Portal, Jornal, TV, Rádio, Vídeo, Oficial) pelo nome do veículo.
 
 ## Limites
 
-- A fonte é o Google Notícias: cobre portais e jornais online, não TV, rádio nem impresso.
-- O Google devolve no máximo cerca de 100 resultados por busca; a coleta a cada 2 horas fica bem abaixo disso.
+- TV aberta, rádio ao vivo e jornal impresso só entram quando o conteúdo também sai no site do veículo ou no YouTube. Monitoramento da transmissão em si e da edição impressa exige serviço pago de clipping (decupagem).
+- Os sites oficiais (Seab, IDR, Adapar, Ceasa, AEN) estão sem notícias novas por causa do período eleitoral; o que eles publicam chega pelos veículos que reproduzem.
+- Redes sociais (Instagram, Facebook, X) não entram: as APIs são pagas ou fechadas.

@@ -16,6 +16,7 @@ import re
 import sys
 import time
 import unicodedata
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -75,6 +76,8 @@ def baixar(url: str) -> bytes | None:
                 return r.read()
         except Exception as e:  # rede instável: tenta de novo, depois desiste só desta fonte
             print(f"  falha ({tentativa + 1}/3) em {url[:90]}: {e}", file=sys.stderr)
+            if isinstance(e, urllib.error.HTTPError) and 400 <= e.code < 500 and e.code != 429:
+                return None  # bloqueio ou página inexistente: repetir não adianta
             time.sleep(4 * (tentativa + 1))
     return None
 

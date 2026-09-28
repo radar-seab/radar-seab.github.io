@@ -1,0 +1,10 @@
+[
+  {"termo": "Seab", "busca": "\"Seab\" (Paraná OR paranaense)"},
+  {"termo": "Secretaria da Agricultura e do Abastecimento", "busca": "\"Secretaria da Agricultura e do Abastecimento\" Paraná"},
+  {"termo": "Secretaria de Estado da Agricultura e do Abastecimento", "busca": "\"Secretaria de Estado da Agricultura e do Abastecimento\""},
+  {"termo": "IDR-Paraná", "busca": "\"IDR-Paraná\" OR \"IDR Paraná\""},
+  {"termo": "IDR", "busca": "\"IDR\" (Paraná OR paranaense)"},
+  {"termo": "Ceasa", "busca": "\"Ceasa\" (Paraná OR Curitiba OR Londrina OR Maringá OR Cascavel OR \"Foz do Iguaçu\")"},
+  {"termo": "Adapar", "busca": "\"Adapar\" OR \"Agência de Defesa Agropecuária do Paraná\""},
+  {"termo": "Deral", "busca": "\"Deral\""}
+]

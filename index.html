@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar SEAB · Clipping de notícias</title>
+<meta name="description" content="Clipping de notícias da Secretaria da Agricultura e do Abastecimento do Paraná e vinculadas.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23006e3c'/><circle cx='16' cy='16' r='8' fill='none' stroke='white' stroke-width='2'/><circle cx='16' cy='16' r='2.5' fill='white'/></svg>">
+<style>
+:root{--bg:#f5f6f3;--card:#fff;--ink:#1c2420;--mute:#5d6862;--line:#dde2dc;--acc:#006e3c;--acc2:#e7f2ec;--warn:#9a5b00}
+@media (prefers-color-scheme:dark){:root{--bg:#121614;--card:#1b201d;--ink:#e6ebe7;--mute:#9aa59e;--line:#2c3430;--acc:#4cc38a;--acc2:#1d2f25;--warn:#e0a24a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--acc);color:#fff;padding:14px 16px}
+@media (prefers-color-scheme:dark){header{background:#0b3a22}}
+header .w{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:20px;letter-spacing:.3px}
+header small{opacity:.85}
+.w{max-width:980px;margin:0 auto}
+main{padding:16px}
+.painel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:12px}
+.linha{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.rot{font-size:12px;font-weight:600;text-transform:uppercase;color:var(--mute);min-width:64px}
+button,.chip{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 12px;cursor:pointer}
+button[aria-pressed=true],.chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
+@media (prefers-color-scheme:dark){button[aria-pressed=true],.chip.on{color:#0b1a12}}
+input[type=date],input[type=search]{font:inherit;font-size:14px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+input[type=search]{flex:1;min-width:180px}
+.acoes{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.acoes button{border-radius:6px}
+#resumo{margin:16px 2px 8px;color:var(--mute);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#resumo b{color:var(--ink)}
+h2{font-size:14px;margin:18px 2px 6px;color:var(--mute)}
+h2::first-letter{text-transform:uppercase}
+ol{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:10px}
+li{padding:10px 14px;border-top:1px solid var(--line);display:grid;gap:3px}
+li:first-child{border-top:0}
+li a{color:var(--ink);font-weight:600;text-decoration:none}
+li a:hover{color:var(--acc);text-decoration:underline}
+.meta{font-size:13px;color:var(--mute);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.fonte{color:var(--acc);font-weight:600}
+.tag{font-size:11px;background:var(--acc2);color:var(--acc);border-radius:4px;padding:1px 6px}
+.vazio{padding:30px;text-align:center;color:var(--mute)}
+footer{color:var(--mute);font-size:12px;padding:24px 16px;text-align:center}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;opacity:0;transition:opacity .2s;pointer-events:none}
+</style>
+</head>
+<body>
+<header><div class="w"><h1>Radar SEAB</h1><small>Clipping de notícias · Secretaria da Agricultura e do Abastecimento do Paraná</small></div></header>
+<main class="w">
+  <section class="painel" aria-label="Filtros">
+    <div class="linha" id="periodos"><span class="rot">Período</span></div>
+    <div class="linha"><span class="rot">De</span><input type="date" id="de" aria-label="Data inicial"> <span>até</span> <input type="date" id="ate" aria-label="Data final"></div>
+    <div class="linha" id="termos"><span class="rot">Termos</span></div>
+    <div class="linha"><span class="rot">Buscar</span><input type="search" id="q" placeholder="Palavra no título ou veículo (ex.: trigo, Folha de Londrina)"></div>
+  </section>
+  <div id="resumo"></div>
+  <div id="lista"><p class="vazio">Carregando…</p></div>
+</main>
+<footer>Fonte: Google Notícias. Coleta automática a cada 2 horas. <span id="atualizado"></span></footer>
+<div id="toast" role="status"></div>
+<script>
+const TZ = "America/Sao_Paulo";
+const $ = s => document.querySelector(s);
+const diaLocal = d => new Date(d).toLocaleDateString("sv-SE", { timeZone: TZ }); // AAAA-MM-DD
+const fmtDia = iso => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+const fmtHora = d => new Date(d).toLocaleTimeString("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+const fmtCurto = iso => iso.split("-").reverse().join("/");
+const semAcento = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+function somaDias(iso, n) { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function periodos() {
+  const hoje = diaLocal(Date.now());
+  const dow = new Date(hoje + "T12:00:00Z").getUTCDay(); // 0 = domingo
+  const seg = somaDias(hoje, -((dow + 6) % 7));
+  const [a, m] = hoje.split("-").map(Number);
+  const iniMes = `${a}-${String(m).padStart(2, "0")}-01`;
+  const iniMesAnt = m === 1 ? `${a - 1}-12-01` : `${a}-${String(m - 1).padStart(2, "0")}-01`;
+  return [
+    ["Hoje", hoje, hoje],
+    ["Ontem", somaDias(hoje, -1), somaDias(hoje, -1)],
+    ["Esta semana", seg, hoje],
+    ["Semana passada (seg a sex)", somaDias(seg, -7), somaDias(seg, -3)],
+    ["Últimos 7 dias", somaDias(hoje, -6), hoje],
+    ["Este mês", iniMes, hoje],
+    ["Mês passado", iniMesAnt, somaDias(iniMes, -1)],
+  ];
+}
+
+let DADOS = { noticias: [], termos: [] };
+const estado = { de: null, ate: null, termos: new Set(), q: "" };
+
+function lerURL() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const [, de, ate] = periodos()[0];
+  estado.de = p.get("de") || de;
+  estado.ate = p.get("ate") || ate;
+  estado.q = p.get("q") || "";
+  const t = p.get("termos");
+  estado.termos = new Set(t ? t.split("|") : DADOS.termos);
+}
+function gravarURL() {
+  const p = new URLSearchParams({ de: estado.de, ate: estado.ate });
+  if (estado.q) p.set("q", estado.q);
+  if (estado.termos.size !== DADOS.termos.length) p.set("termos", [...estado.termos].join("|"));
+  history.replaceState(null, "", "#" + p);
+}
+
+function filtradas() {
+  const q = semAcento(estado.q.trim());
+  return DADOS.noticias.filter(n => {
+    const d = diaLocal(n.data);
+    return d >= estado.de && d <= estado.ate
+      && n.termos.some(t => estado.termos.has(t))
+      && (!q || semAcento(n.titulo + " " + n.fonte).includes(q));
+  });
+}
+
+function el(tag, attrs = {}, ...filhos) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k in e ? (e[k] = v) : e.setAttribute(k, v);
+  e.append(...filhos);
+  return e;
+}
+
+function montarControles() {
+  const pp = $("#periodos");
+  for (const [nome, de, ate] of periodos()) {
+    pp.append(el("button", { type: "button", textContent: nome, onclick: () => { estado.de = de; estado.ate = ate; render(); } }));
+  }
+  const tt = $("#termos");
+  tt.append(el("button", { type: "button", className: "chip", textContent: "Todos", onclick: () => {
+    estado.termos = estado.termos.size === DADOS.termos.length ? new Set() : new Set(DADOS.termos); render();
+  } }));
+  for (const t of DADOS.termos) {
+    tt.append(el("button", { type: "button", className: "chip", textContent: t, onclick: () => {
+      estado.termos.has(t) ? estado.termos.delete(t) : estado.termos.add(t); render();
+    } }));
+  }
+  $("#de").onchange = e => { estado.de = e.target.value; render(); };
+  $("#ate").onchange = e => { estado.ate = e.target.value; render(); };
+  $("#q").oninput = e => { estado.q = e.target.value; render(); };
+}
+
+function render() {
+  if (estado.de > estado.ate) [estado.de, estado.ate] = [estado.ate, estado.de];
+  gravarURL();
+  $("#de").value = estado.de; $("#ate").value = estado.ate; if ($("#q").value !== estado.q) $("#q").value = estado.q;
+  for (const [i, [, de, ate]] of periodos().entries())
+    $("#periodos").children[i + 1].setAttribute("aria-pressed", de === estado.de && ate === estado.ate);
+  const chips = $("#termos").querySelectorAll(".chip");
+  chips[0].classList.toggle("on", estado.termos.size === DADOS.termos.length);
+  DADOS.termos.forEach((t, i) => chips[i + 1].classList.toggle("on", estado.termos.has(t)));
+
+  const lista = filtradas();
+  const veiculos = new Set(lista.map(n => n.fonte)).size;
+  const periodo = estado.de === estado.ate ? fmtCurto(estado.de) : `${fmtCurto(estado.de)} a ${fmtCurto(estado.ate)}`;
+  $("#resumo").replaceChildren(
+    el("span", {}, el("b", { textContent: lista.length }), ` notícias em `, el("b", { textContent: veiculos }), ` veículos · ${periodo}`),
+    el("span", { className: "acoes" },
+      el("button", { type: "button", textContent: "Copiar clipping", onclick: () => copiar(lista, periodo) }),
+      el("button", { type: "button", textContent: "Baixar planilha (CSV)", onclick: () => baixarCSV(lista) }))
+  );
+
+  const box = $("#lista");
+  if (!lista.length) { box.replaceChildren(el("p", { className: "vazio", textContent: "Nenhuma notícia neste período com os filtros escolhidos." })); return; }
+  const porDia = Map.groupBy ? Map.groupBy(lista, n => diaLocal(n.data)) : lista.reduce((m, n) => m.set(diaLocal(n.data), [...(m.get(diaLocal(n.data)) || []), n]), new Map());
+  box.replaceChildren(...[...porDia].flatMap(([dia, ns]) => [
+    el("h2", { textContent: `${fmtDia(dia)} · ${ns.length}` }),
+    el("ol", {}, ...ns.map(n => el("li", {},
+      el("a", { href: n.link, target: "_blank", rel: "noopener", textContent: n.titulo }),
+      el("span", { className: "meta" },
+        el("span", { className: "fonte", textContent: n.fonte }),
+        el("span", { textContent: fmtHora(n.data) }),
+        ...n.termos.map(t => el("span", { className: "tag", textContent: t }))))))
+  ]));
+}
+
+function copiar(lista, periodo) {
+  const texto = [`RADAR SEAB · Clipping ${periodo}`, `${lista.length} notícias`, "",
+    ...lista.map(n => `• ${n.titulo}\n  ${n.fonte}, ${fmtCurto(diaLocal(n.data))}\n  ${n.link}`)].join("\n");
+  navigator.clipboard.writeText(texto).then(() => aviso("Clipping copiado"), () => aviso("Não foi possível copiar"));
+}
+function baixarCSV(lista) {
+  const esc = v => `"${String(v).replace(/"/g, '""')}"`;
+  const linhas = [["data", "hora", "veiculo", "titulo", "termos", "link"],
+    ...lista.map(n => [fmtCurto(diaLocal(n.data)), fmtHora(n.data), n.fonte, n.titulo, n.termos.join("; "), n.link])];
+  const blob = new Blob(["﻿" + linhas.map(l => l.map(esc).join(";")).join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = el("a", { href: URL.createObjectURL(blob), download: `radar-seab_${estado.de}_${estado.ate}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+}
+function aviso(msg) { const t = $("#toast"); t.textContent = msg; t.style.opacity = 1; setTimeout(() => (t.style.opacity = 0), 1800); }
+
+fetch("data/noticias.json", { cache: "no-cache" })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d => {
+    DADOS = d;
+    $("#atualizado").textContent = `Última coleta: ${new Date(d.atualizado).toLocaleString("pt-BR", { timeZone: TZ })}.`;
+    lerURL(); montarControles(); render();
+  })
+  .catch(() => $("#lista").replaceChildren(el("p", { className: "vazio", textContent: "Não foi possível carregar as notícias. Tente recarregar a página." })));
+</script>
+</body>
+</html>
